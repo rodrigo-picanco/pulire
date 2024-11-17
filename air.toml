@@ -1,0 +1,6 @@
+root = "."
+tmp_dir = "tmp"
+build = "go build -o {{.tmp}}/app"
+cmd = "{{.tmp}}/app"
+include_ext = ["go", "tmpl", "tpl", "html"]
+exclude_dir = ["tmp", "vendor"]
