@@ -4,6 +4,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wdth,wght@75,300..800&display=swap" rel="stylesheet">
     <style>
+      @view-transition {
+        navigation: auto;
+      }
       :root {
         --background: #fefffe;
         --radius: 4px;
@@ -13,7 +16,7 @@
         font-family: "Open Sans", sans-serif;
         font-style: normal;
       }
-      input, button {
+      input, button, select {
         font-family: "Open Sans", sans-serif;
       }
       * {
@@ -49,10 +52,11 @@
       nav {
         grid-column: 1 / span 2;
       }
-      input {
+      input, select {
         border-radius: var(--radius);
         border: 1px solid var(--text);
         padding: 0.5rem;
+        font-size: 1rem;
       }
       button {
         background: var(--text);
@@ -64,28 +68,45 @@
       }
       .pill {
         border-radius: 100%;
-        height: 40px;
-        width: 40px;
+        height: 30px;
+        width: 30px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        &.outline {
+          background: var(--background);
+          color: var(--text);
+        }
       }
-      #add-task {
+      .form {
         display: grid;
         gap: 0.5rem;
+        padding: 0.5rem 0;
       }
-      #tasks {
-        display: grid;
+      #tasks, #forms {
+        display: flex;
+        flex-direction: column;
         gap: 2rem;
       }
+
+      #tasks {
+        padding-right: 1rem;
+        border-right: 3px solid var(--text);
+      }
+
+      .room:not(:first-child) {
+        border-top: 3px solid var(--text);
+        padding-top: 1rem;
+      }
       .task {
-        border-bottom: 3px solid var(--text);
         display: grid;
         grid-template-columns: 1fr auto;
-        padding: 0.5rem 0;
-        h3 {
-          text-transform: uppercase;
-          font-size: 1.25rem;
-        }
-        form {
-          align-self: center;
+        grid-column: auto;
+
+        .actions {
+          display: flex;
+          gap: 0.5rem;
         }
       }
     </style>
@@ -94,39 +115,65 @@
    <main>
      <h1>pulire</h1>
       <nav>
-        {{ if .period }}
+        {{ if .Filter }}
           <a href="/">Daily tasks</a> 
         {{ else }}
           <a href="?period=all">All tasks</a>
         {{ end }}
       </nav>
       <div id="tasks">
-        {{ range .tasks }}
-          <article class="task">
-            <div>
+        {{ $filter := .Filter }}
+        {{ range .Rooms }}
+          {{ if gt (len .Tasks) 0 }}
+            <div class="room">
               <h3>{{ .Name }}</h3>
-              </p>Every {{ .Period }} week(s)</p>
-              {{ if .LastCompleted }}
-                <p>Last completed {{ dateformat .LastCompleted }}</p>
-              {{ else }}
-                <p>Never done</p>
+              {{ range .Tasks }}
+                <div class="task">
+                  <div>
+                    <h4>{{ .Name }}</h4>
+                    <p>Every
+                      {{ if gt .Period 1 }}
+                        {{ .Period }} weeks 
+                      {{else}} 
+                        week 
+                      {{end}}
+                    </p>
+                  </div>
+                  <div class="actions">
+                    {{ if $filter }}
+                      <form action="/task/{{ .ID }}/delete">
+                        <button class="pill outline">✗</button>
+                      </form>
+                    {{ else }}
+                      <form action="/task/{{ .ID }}">
+                        <button class="pill outline">✓</button>
+                      </form>
+                    {{ end }}
+                  </div>
+                </div>
               {{ end }}
             </div>
-            <form action="/task/{{ .ID }}" method="POST">
-              <button class="pill" type="submit">&#x2714;</button>
-            </form>
-          </article>
-        {{ else }}
-          <h3>No tasks today!</h3>
+          {{ end }}
         {{ end }}
       </div>
-      <div>
-        <form action="/task" method="POST" id="add-task">
-          <input required type="text" name="name" placeholder="Name" fo />
-          <input required type="number" name="period" placeholder="Weeks" />
-          <button type="submit">Add task</button>
-        </form>
-      </div>
+      {{ if .Filter }}
+        <div id="forms">
+          <form action="/task" method="POST" class="form">
+            <input required type="text" name="name" placeholder="Task"  />
+            <select name="room" placeholder="Room">
+              {{ range .Rooms }}
+                <option value="{{ .ID }}">{{ .Name }}</option>
+              {{ end }}
+            </select>
+            <input required type="number" name="period" placeholder="Weeks" />
+            <button type="submit">Add task</button>
+          </form>
+          <form action="/room" method="POST" class="form">
+            <input required type="text" name="name" placeholder="Room" fo />
+            <button type="submit">Add room</button>
+          </form>
+        </div>
+      {{ end }}
     </main>
   </body>
 </html>
