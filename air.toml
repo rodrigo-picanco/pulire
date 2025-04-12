@@ -1,6 +1,7 @@
 root = "."
 tmp_dir = "tmp"
-build = "go build -o {{.tmp}}/app"
-cmd = "{{.tmp}}/app"
+build = "mkdir -p {{.tmp}} && go build -o {{.tmp}}/main"
+cmd = "{{.tmp}}/main"
 include_ext = ["go", "tmpl", "tpl", "html"]
 exclude_dir = ["tmp", "vendor"]
+exclude_ext = ["sqlite3"]

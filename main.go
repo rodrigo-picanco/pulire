@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"html/template"
+	"os"
 	"strconv"
 	"time"
 )
@@ -13,8 +15,9 @@ type Task struct {
 	gorm.Model
 	Name      string
 	Period    int
-	RoomID    int
-        UpdatedAt time.Time
+	RoomID    uint
+	UpdatedAt time.Time
+	CreatedAt time.Time
 }
 
 type Room struct {
@@ -24,36 +27,35 @@ type Room struct {
 }
 
 func main() {
-	db := init_db()
-	r := init_server()
+	db := initDb()
+	r := initServer()
 	r.GET("/", func(c *gin.Context) {
 		period := c.Query("period")
-                var rooms []Room
-                if period == "all" { 
-                        rooms = get_rooms(db)
-                } else {
-                        rooms = get_due_rooms(db) }
+		var rooms []Room
+		if period == "all" {
+			db.Preload("Tasks").Find(&rooms)
+		} else {
+			db.Preload("Tasks", "datetime('now', 'localtime') > datetime(updated_at,  (period * 7) || ' days', 'localtime') OR updated_at == created_at").Find(&rooms)
+		}
 		c.HTML(200, "tasks.tpl", gin.H{
 			"Filter": period,
-                        "Rooms":  rooms,
+			"Rooms":  rooms,
 		})
 	})
-        r.POST("room", func(c *gin.Context) {
-                name := c.PostForm("name")
-                db.Create(&Room{Name: name})
-                c.Redirect(302, c.Request.Referer())
-        })
 	r.POST("task", func(c *gin.Context) {
 		name := c.PostForm("name")
 		period, err := strconv.Atoi(c.PostForm("period"))
-                if err != nil {
-                        panic(err)
-                }
-		roomID, err := strconv.Atoi(c.PostForm("room"))
 		if err != nil {
-                        panic(err)
+			panic(err)
 		}
-		db.Create(&Task{Name: name, Period: period, RoomID: roomID})
+		roomName := c.PostForm("room")
+		var room Room
+		result := db.Where("name = ?", roomName).First(&room)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			room = Room{Name: roomName}
+			db.Create(&room)
+		}
+		db.Create(&Task{Name: name, Period: period, RoomID: room.ID})
 		c.Redirect(302, c.Request.Referer())
 	})
 	r.GET("task/:id", func(c *gin.Context) {
@@ -63,47 +65,54 @@ func main() {
 		c.Redirect(302, c.Request.Referer())
 	})
 	r.GET("task/:id/delete", func(c *gin.Context) {
-		var task Task
-		db.First(&task, c.Param("id"))
-		db.Delete(&task)
+		db.Transaction(func(tx *gorm.DB) error {
+			var task Task
+			if err := tx.First(&task, c.Param("id")).Error; err != nil {
+				return err
+			}
+			if err := tx.Delete(&task).Error; err != nil {
+				return err
+			}
+			var exists bool
+			if err := tx.Model(&Task{}).
+				Select("1").
+				Where("room_id = ?", task.RoomID).
+				Limit(1).
+				Scan(&exists).Error; err != nil {
+				return err
+			}
+			if !exists {
+				if err := tx.Delete(&Room{}, task.RoomID).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		})
 		c.Redirect(302, c.Request.Referer())
 	})
 	r.Run(":8080")
 }
 
-func get_due_rooms(db *gorm.DB) []Room {
-        rooms := []Room{}
-        db.Preload("Tasks", "datetime('now', 'localtime') > datetime(updated_at,  (period * 7) || ' days', 'localtime')").Find(&rooms)
-        return rooms
-}
-
-func get_rooms(db *gorm.DB) []Room {
-        rooms := []Room{}
-        db.Preload("Tasks").Find(&rooms)
-        return rooms
-}
-
-func init_server() *gin.Engine {
+func initServer() *gin.Engine {
 	r := gin.Default()
 	r.SetHTMLTemplate(
 		template.Must(
 			template.New("").Funcs(
-                                template.FuncMap{
-                                        "dateformat": func(ts time.Time) string {
-                                                return ts.Format("02/01")
-                                        },
-			        }).ParseGlob("templates/*"),
-                        ),
-        )
+				template.FuncMap{
+					"dateformat": func(ts time.Time) string {
+						return ts.Format("02/01")
+					},
+				}).ParseGlob("templates/*"),
+		),
+	)
 	return r
 }
 
-func init_db() *gorm.DB {
-
-dbPath := os.Getenv("PULIRE_DB_PATH")
-        if dbPath == "" {
-            dbPath = "./db.sqlite3" 
-        }
+func initDb() *gorm.DB {
+	dbPath := os.Getenv("PULIRE_DB_PATH")
+	if dbPath == "" {
+		dbPath = "db.sqlite3"
+	}
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
