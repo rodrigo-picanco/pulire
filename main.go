@@ -23,7 +23,6 @@ type Room struct {
 	Tasks []Task
 }
 
-// TODO: Render by rooms preloading tasks 
 func main() {
 	db := init_db()
 	r := init_server()
@@ -39,6 +38,24 @@ func main() {
                         "Rooms":  rooms,
 		})
 	})
+        r.POST("room", func(c *gin.Context) {
+                name := c.PostForm("name")
+                db.Create(&Room{Name: name})
+                c.Redirect(302, c.Request.Referer())
+        })
+	r.POST("task", func(c *gin.Context) {
+		name := c.PostForm("name")
+		period, err := strconv.Atoi(c.PostForm("period"))
+                if err != nil {
+                        panic(err)
+                }
+		roomID, err := strconv.Atoi(c.PostForm("room"))
+		if err != nil {
+                        panic(err)
+		}
+		db.Create(&Task{Name: name, Period: period, RoomID: roomID})
+		c.Redirect(302, c.Request.Referer())
+	})
 	r.GET("task/:id", func(c *gin.Context) {
 		var task Task
 		db.First(&task, c.Param("id"))
@@ -49,25 +66,6 @@ func main() {
 		var task Task
 		db.First(&task, c.Param("id"))
 		db.Delete(&task)
-		c.Redirect(302, c.Request.Referer())
-	})
-        r.POST("room", func(c *gin.Context) {
-                name := c.PostForm("name")
-                db.Create(&Room{Name: name})
-                c.Redirect(302, c.Request.Referer())
-        })
-	r.POST("task", func(c *gin.Context) {
-		name := c.PostForm("name")
-		period := c.PostForm("period")
-		roomID, err := strconv.Atoi(c.PostForm("room"))
-		if err != nil {
-                        panic(err)
-		}
-                periodInt, err := strconv.Atoi(period)
-                if err != nil {
-                        panic(err)
-                }
-		db.Create(&Task{Name: name, Period: periodInt, RoomID: roomID})
 		c.Redirect(302, c.Request.Referer())
 	})
 	r.Run(":8080")
@@ -89,16 +87,24 @@ func init_server() *gin.Engine {
 	r := gin.Default()
 	r.SetHTMLTemplate(
 		template.Must(
-			template.New("").Funcs(template.FuncMap{
-				"dateformat": func(ts time.Time) string {
-					return ts.Format("02/01")
-				},
-			}).ParseGlob("templates/*")))
+			template.New("").Funcs(
+                                template.FuncMap{
+                                        "dateformat": func(ts time.Time) string {
+                                                return ts.Format("02/01")
+                                        },
+			        }).ParseGlob("templates/*"),
+                        ),
+        )
 	return r
 }
 
 func init_db() *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("pulire.db"), &gorm.Config{})
+
+dbPath := os.Getenv("PULIRE_DB_PATH")
+        if dbPath == "" {
+            dbPath = "./db.sqlite3" 
+        }
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}

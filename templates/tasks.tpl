@@ -73,7 +73,6 @@
         display: flex;
         justify-content: center;
         align-items: center;
-
         &.outline {
           background: var(--background);
           color: var(--text);
@@ -89,12 +88,10 @@
         flex-direction: column;
         gap: 2rem;
       }
-
-      #tasks {
-        padding-right: 1rem;
-        border-right: 3px solid var(--text);
+      #forms {
+        padding-left: 1rem;
+        border-left: 3px solid var(--text);
       }
-
       .room:not(:first-child) {
         border-top: 3px solid var(--text);
         padding-top: 1rem;
@@ -103,7 +100,6 @@
         display: grid;
         grid-template-columns: 1fr auto;
         grid-column: auto;
-
         .actions {
           display: flex;
           gap: 0.5rem;
