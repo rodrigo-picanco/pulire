@@ -109,7 +109,7 @@ func initServer() *gin.Engine {
 }
 
 func initDb() *gorm.DB {
-	dbPath := os.Getenv("PULIRE_DB_PATH")
+	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
 		dbPath = "db.sqlite3"
 	}
