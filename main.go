@@ -30,15 +30,23 @@ func main() {
 	db := initDb()
 	r := initServer()
 	r.GET("/", func(c *gin.Context) {
-		period := c.Query("period")
+		tasks_filter := c.Query("tasks")
 		var rooms []Room
-		if period == "all" {
+		if tasks_filter == "all" {
 			db.Preload("Tasks").Find(&rooms)
 		} else {
-			db.Preload("Tasks", "datetime('now', 'localtime') > datetime(updated_at,  (period * 7) || ' days', 'localtime') OR updated_at == created_at").Find(&rooms)
+			db.Preload("Tasks", `
+                                datetime('now', 'localtime') > datetime(
+                                        updated_at,
+                                        (CASE WHEN period > 1 THEN (period * 7) ELSE 3 END) || ' days',
+                                        'localtime'
+                                ) 
+                                OR updated_at == created_at
+                        `).Find(&rooms)
+                                
 		}
 		c.HTML(200, "tasks.tpl", gin.H{
-			"Filter": period,
+			"Filter": tasks_filter,
 			"Rooms":  rooms,
 		})
 	})

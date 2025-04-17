@@ -10,7 +10,7 @@
         {{ if .Filter }}
           <a href="/" class="underline">Daily tasks</a> 
         {{ else }}
-          <a href="?period=all" class="underline">All tasks</a>
+          <a href="?tasks=all" class="underline">All tasks</a>
         {{ end }}
       </nav>
     </div>
