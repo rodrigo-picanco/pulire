@@ -22,7 +22,7 @@
             <input class="border-1 rounded-xl px-2 py-1" name="room" placeholder="Living room" list="rooms" required>
             <datalist id="rooms">
               {{ range .Rooms }}
-              <option value="{{ .Name}}">{{ .Name }}</option>
+                <option value="{{ .Name}}">{{ .Name }}</option>
               {{ end }}
             </datalist>
             <input class="border-1 rounded-xl px-2 py-1" required type="number" name="period" placeholder="1" min="1" value="1" required/>
@@ -33,16 +33,19 @@
       <div class="flex flex-col gap-2 p-2 md:order-first grow-1">
         {{ $filter := .Filter }}
         {{ range .Rooms }}
-          <div>
+          {{ $roomName:= .Name }}
+          <div id="{{ $roomName }}">
             <h3 class="text-xl font-bold text-stone-500">{{ .Name }}</h3>
             {{ range .Tasks }}
               <div class="flex gap-2 items-center">
                 {{ if $filter }}
-                  <form action="/task/{{ .ID }}/delete">
+                  <form action="/task/{{ .ID }}/delete" method="POST">
+                    <input type="hidden" name="room" value={{ $roomName }} />
                     <button class="cursor-pointer bg-stone-700 hover:bg-stone-800 text-white rounded-full border-1 px-1 py-1 w-8 h-8">✗</button>
                   </form>
                 {{ else }}
-                  <form action="/task/{{ .ID }}">
+                  <form action="/task/{{ .ID }}" method="POST">
+                    <input type="hidden" name="room" value={{ $roomName }} />
                     <button class="cursor-pointer bg-stone-700 hover:bg-stone-800 text-white rounded-full border-1 px-1 py-1 w-8 h-8">✓</button>
                   </form>
                 {{ end }}

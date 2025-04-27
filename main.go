@@ -66,13 +66,15 @@ func main() {
 		db.Create(&Task{Name: name, Period: period, RoomID: room.ID})
 		c.Redirect(302, c.Request.Referer())
 	})
-	r.GET("task/:id", func(c *gin.Context) {
+	r.POST("task/:id", func(c *gin.Context) {
+                room := c.PostForm("room")
 		var task Task
 		db.First(&task, c.Param("id"))
 		db.Save(&task)
-		c.Redirect(302, c.Request.Referer())
+		c.Redirect(302, c.Request.Referer() + "#" + room)
 	})
-	r.GET("task/:id/delete", func(c *gin.Context) {
+	r.POST("task/:id/delete", func(c *gin.Context) {
+                room := c.PostForm("room")
 		db.Transaction(func(tx *gorm.DB) error {
 			var task Task
 			if err := tx.First(&task, c.Param("id")).Error; err != nil {
@@ -96,7 +98,7 @@ func main() {
 			}
 			return nil
 		})
-		c.Redirect(302, c.Request.Referer())
+		c.Redirect(302, c.Request.Referer() + "#" + room)
 	})
 	r.Run(":8080")
 }
